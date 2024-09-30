@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CesiumFast</title>
+    
+    <!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.7.16/dist/vue.min.js"></script> -->
+    <!-- <script src="https://unpkg.com/element-ui/lib/index.js"></script> -->
+    <!-- <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css"> -->
+    <!-- <script src="https://cesium.com/downloads/cesiumjs/releases/1.121/Build/Cesium/Cesium.js"></script> -->
+    <!-- <link href="https://cesium.com/downloads/cesiumjs/releases/1.121/Build/Cesium/Widgets/widgets.css" rel="stylesheet"> -->
+    
+    <!-- 下载下来放在了本地，否则有些速度特别慢 -->
+    <script src="node_modules/vue/dist/vue.min.js"></script>
+    <script src="node_modules/element-ui/lib/index.js"></script>
+    <link rel="stylesheet" href="node_modules/element-ui/lib/theme-chalk/index.css">
+    <script src="node_modules/cesium/Build/Cesium/Cesium.js"></script>
+    <script type="text/javascript"  src="dist/dev/CesiumFast.js"></script>
+    <link href="node_modules/cesium/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  </head>
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+    }
+
+    #app {
+      height: 100%;
+      /* display: flex; */
+    }
+
+    #cesiumContainer {
+      height: 60%;
+      width: 100%;
+    }
+
+    .examples {
+      padding: 5px;
+    }
+
+    .form-label {
+      font-size: 14px;
+      color: #606266;
+    }
+
+    .el-button, .el-input__inner, .el-select {
+      padding: 5px 7px;
+    }
+    .el-button {
+      margin-left: 3px !important;
+    }
+  </style>
+
+  <body>
+    <div id="app">
+      <div id="cesiumContainer"></div>
+        <el-select v-model="graphicsType" size="mini" style="width: 100px;">
+          <el-option label="点" value="POINT"></el-option>
+          <el-option label="矩形" value="RECTANGLE"></el-option>
+          <el-option label="多边形" value="POLYGON"></el-option>
+        </el-select>
+        <span class="form-label">图层: </span>
+        <el-input style="width: 100px;" size="mini" v-model="options.layer" ></el-input>
+        <el-button type="primary" size="mini" @click="drawEntity">绘制</el-button>
+        <el-button type="primary" size="mini" @click="setEntityLabelText">设置名称</el-button>
+        <el-button type="primary" size="mini" @click="removeEntitiesByLayer">删除图层</el-button>
+
+
+    </div>
+
+    <script type="text/javascript">
+      window.CESIUM_BASE_URL = 'node_modules/cesium/Build/Cesium/';
+
+      const app = new Vue({
+        el: '#app',
+        data: {
+          fastCesium: undefined,
+          graphicsType: 'RECTANGLE',
+          entity: undefined,
+          options: {
+            layer: '',
+            properties: {
+              key1: '值1',
+              key2: '值2',
+            },
+          }
+        },
+        methods: {
+          drawEntity() {
+            this.fastCesium.draw.drawEntity(
+              CesiumFast.FastGraphicsType[this.graphicsType], 
+              this.options,
+              (e) => {
+                this.entity = e.entity
+                console.log(e)
+                console.log(this.entity.properties.getValue().layer)
+              }
+          )
+          },
+          setEntityLabelText() {
+            if (this.entity) {
+              this.entity.label.text = '测试'
+            }
+          },
+          removeEntitiesByLayer() {
+            this.fastCesium.draw.removeEntitiesByLayer(this.options.layer)
+          }
+        },
+        mounted() {
+          // this.viewer = new Cesium.Viewer("cesiumContainer");
+          // this.viewer = new CesiumFast.Cesium.Viewer("cesiumContainer");
+          this.fastCesium = new CesiumFast("cesiumContainer");
+        }
+      })
+    </script>
+  </body>
+</html>
