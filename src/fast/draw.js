@@ -11,6 +11,7 @@ class FastDraw {
   #state = {}
   #initState() {
     this.#state = {
+      isDrawing: false,
       startCartesian: undefined,
       currentCartesian: undefined,
       entity: undefined,
@@ -24,6 +25,22 @@ class FastDraw {
   
   constructor(_this) {
     this.viewer = _this.viewer
+    this.#initState()
+    this.#setLeftClickEntityHandler()
+  }
+
+  // TODO 可能需要处理不是Entity的情况
+  #setLeftClickEntityHandler() {
+    const handler = new Cesium.ScreenSpaceEventHandler(this.viewer.scene.canvas)
+    handler.setInputAction((event) => {
+      if (this.#state.isDrawing) return
+
+      // 如果没有注册LEFT_CLICK_ENTITY事件，则不处理
+      if (!this.eventHandler.hasAction('LEFT_CLICK_ENTITY')) return
+      
+      const pickedObjects = this.viewer.scene.drillPick(event.position)
+      this.eventHandler.trigger('LEFT_CLICK_ENTITY', pickedObjects.map(pickedObject => pickedObject.id))
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK)
   }
 
   /**
@@ -45,7 +62,7 @@ class FastDraw {
       if (options.properties && !(options.properties instanceof Object)) throw new Error('options.properties must be an instance of Object')
     }
 
-    this.#initState()
+    this.#state.isDrawing = true
     if (graphicsType === GraphicsType.POINT) {
       this.#drawPoint(options)
 
@@ -97,6 +114,7 @@ class FastDraw {
         properties: {
           type: GraphicsType.POINT,
           layer: options.layer || 'default',
+          options,
           userProperties: options.properties,
         }
       })
@@ -107,6 +125,7 @@ class FastDraw {
       })
       this.#handler.destroy()
       this.#handler = undefined
+      this.#initState()
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK)
   }
 
@@ -176,6 +195,7 @@ class FastDraw {
           properties: {
             type: GraphicsType.RECTANGLE,
             layer: options.layer || 'default',
+            options,
             userProperties: options.properties,
           }
         })
@@ -301,6 +321,7 @@ class FastDraw {
           properties: {
             type: GraphicsType.POLYGON,
             layer: options.layer || 'default',
+            options,
             userProperties: options.properties,
           }
         })
@@ -379,22 +400,29 @@ class FastDraw {
   /**
    * 设置实体颜色
    * @param {Cesium.Entity} entity 实体
-   * @param {{ outlineColor: Cesium.Color, fill: boolean, color: Cesium.Color }} options 选项
+   * @param {{ outlineColor: Cesium.Color, fill: boolean, color: Cesium.Color }} options 选项; 如果不传，则使用实体创建时的options
    * @returns 
    */
   setColor(entity, options) {
     if (!entity) {
       return
     }
+    if (!options) {
+      options = entity.properties.getValue().options
+    }
+    let material = Cesium.Color.YELLOW.withAlpha(0.2)
+    if (options.fill && options.color) {
+      material = options.color
+    }
     if (entity.properties.getValue().type === GraphicsType.POINT) {
-      options.fill && (entity.point.outlineColor = options.outlineColor || Cesium.Color.BLUE)
       entity.point.color = options.color || Cesium.Color.YELLOW
+      options.fill && (entity.point.outlineColor = options.outlineColor || Cesium.Color.BLUE)
     } else if (entity.properties.getValue().type === GraphicsType.RECTANGLE) {
-      entity.rectangle.material = options.fill ? options.color : Cesium.Color.YELLOW.withAlpha(0.2)
       entity.polyline.material = options.outlineColor || Cesium.Color.LAWNGREEN
+      entity.rectangle.material = material
     } else if (entity.properties.getValue().type === GraphicsType.POLYGON) {
-      entity.polygon.material = options.fill ? options.color : Cesium.Color.YELLOW.withAlpha(0.2)
       entity.polyline.material = options.outlineColor || Cesium.Color.LAWNGREEN
+      entity.polygon.material = material
     }
   }
 }

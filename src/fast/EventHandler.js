@@ -3,8 +3,8 @@ class EventHandler {
   actionTypes = new Set()
 
   /**
-   * 
-   * @param {Array.<string>} actionTypes 
+   * 构建一个事件处理器
+   * @param {Array.<string>} actionTypes - 支持的事件类型
    */
   constructor(actionTypes) {
     actionTypes.some(actionType => {
@@ -34,6 +34,10 @@ class EventHandler {
     if (this.events[actionType]) {
       this.events[actionType](...args)
     }
+  }
+
+  hasAction(actionType) {
+    return this.events[actionType] !== undefined
   }
 }
 

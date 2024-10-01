@@ -80,18 +80,19 @@
         el: '#app',
         data: {
           fastCesium: undefined,
-          graphicsType: 'POINT',
+          graphicsType: 'RECTANGLE',
           entity: undefined,
           options: {
             layer: '',
             // outlineColor: Cesium.Color.RED,
-            // fill: true,
+            fill: true,
             // color: Cesium.Color.BLUE.withAlpha(0.2),
             properties: {
               key1: '值1',
               key2: '值2',
             },
-          }
+          },
+          selectedEntities: [],
         },
         methods: {
           drawEntity() {
@@ -99,6 +100,22 @@
               this.entity = e.entity
               console.log(e)
             }, 'DRAW_ENTITY')
+
+            this.fastCesium.draw.eventHandler.setAction((e) => {
+              if (e.length === 0) {
+                this.selectedEntities.forEach(entity => {
+                  this.fastCesium.draw.setColor(entity)
+                })
+                this.selectedEntities = []
+              } else {
+                this.selectedEntities.push(e[0])
+                this.fastCesium.draw.setColor(e[0], { outlineColor: Cesium.Color.RED })
+                // e.forEach(entity => {
+                //   this.fastCesium.draw.setColor(entity, { outlineColor: Cesium.Color.RED })
+                // })
+              }
+            }, 'LEFT_CLICK_ENTITY')
+
             this.fastCesium.draw.drawEntity(
               CesiumFast.GraphicsType[this.graphicsType], 
               this.options,
