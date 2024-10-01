@@ -1,12 +1,12 @@
 import * as Cesium from 'cesium'
 
-import FastGraphicsType from './constants/graphics';
+import GraphicsType from './constants/graphics';
 
 import FastDraw from './fast/draw.js';
 
 class CesiumFast {
   static Cesium = Cesium;
-  static FastGraphicsType = FastGraphicsType
+  static GraphicsType = GraphicsType
 
   viewer
   draw

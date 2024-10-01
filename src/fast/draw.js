@@ -1,6 +1,6 @@
 import * as Cesium from 'cesium'
 
-import FastGraphicsType from '../constants/graphics';
+import GraphicsType from '../constants/graphics';
 import * as rectangleUtils from '../utils/rectangle'
 import EventHandler from './EventHandler'
 
@@ -28,13 +28,13 @@ class FastDraw {
 
   /**
    * 绘制图形
-   * @param { FastGraphicsType } fastGraphicsType 图形类型
+   * @param { GraphicsType } graphicsType 图形类型
    * @param { { layer: string, outlineColor: Color, fill: boolean, color: Color, properties: Object.<string, *> } } options 选项
    * @param { function({ entity: Entity, coordinates: Array }): void } callback 回调函数
    */
-  drawEntity(fastGraphicsType, options) {
-    if (!(fastGraphicsType instanceof FastGraphicsType)) {
-      throw new Error('fastGraphicsType must be an instance of FastGraphicsType')
+  drawEntity(graphicsType, options) {
+    if (!(graphicsType instanceof GraphicsType)) {
+      throw new Error('graphicsType must be an instance of GraphicsType')
     }
     if (options) {
       if (!(options instanceof Object)) throw new Error('options must be an instance of Object')
@@ -46,13 +46,13 @@ class FastDraw {
     }
 
     this.#initState()
-    if (fastGraphicsType === FastGraphicsType.POINT) {
+    if (graphicsType === GraphicsType.POINT) {
       this.#drawPoint(options)
 
-    } else if (fastGraphicsType === FastGraphicsType.RECTANGLE) {
+    } else if (graphicsType === GraphicsType.RECTANGLE) {
       this.#drawRectangle(options)
 
-    } else if (fastGraphicsType === FastGraphicsType.POLYGON) {
+    } else if (graphicsType === GraphicsType.POLYGON) {
       this.#state.store['LEFT_DOUBLE_CLICK'] = this.viewer.cesiumWidget.screenSpaceEventHandler.getInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK)
       this.viewer.cesiumWidget.screenSpaceEventHandler.removeInputAction(Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK)
       this.#drawPolygon(options)
@@ -95,14 +95,14 @@ class FastDraw {
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
         },
         properties: {
-          type: FastGraphicsType.POINT,
+          type: GraphicsType.POINT,
           layer: options.layer || 'default',
           userProperties: options.properties,
         }
       })
       this.eventHandler.trigger('DRAW_ENTITY', {
         entity,
-        type: FastGraphicsType.POINT,
+        type: GraphicsType.POINT,
         coordinates: [longitude, latitude]
       })
       this.#handler.destroy()
@@ -174,7 +174,7 @@ class FastDraw {
             disableDepthTestDistance: Number.POSITIVE_INFINITY,
           },
           properties: {
-            type: FastGraphicsType.RECTANGLE,
+            type: GraphicsType.RECTANGLE,
             layer: options.layer || 'default',
             userProperties: options.properties,
           }
@@ -213,7 +213,7 @@ class FastDraw {
 
       this.eventHandler.trigger('DRAW_ENTITY', {
         entity: this.#state.entity,
-        type: FastGraphicsType.RECTANGLE,
+        type: GraphicsType.RECTANGLE,
         coordinates,
       })
       this.#handler.destroy()
@@ -299,7 +299,7 @@ class FastDraw {
             disableDepthTestDistance: Number.POSITIVE_INFINITY,
           },
           properties: {
-            type: FastGraphicsType.POLYGON,
+            type: GraphicsType.POLYGON,
             layer: options.layer || 'default',
             userProperties: options.properties,
           }
@@ -335,7 +335,7 @@ class FastDraw {
 
       this.eventHandler.trigger('DRAW_ENTITY', {
         entity: this.#state.entity,
-        type: FastGraphicsType.POLYGON,
+        type: GraphicsType.POLYGON,
         coordinates
       })
       this.viewer.cesiumWidget.screenSpaceEventHandler.setInputAction(this.#state.store['LEFT_DOUBLE_CLICK'], Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK)
@@ -386,13 +386,13 @@ class FastDraw {
     if (!entity) {
       return
     }
-    if (entity.properties.getValue().type === FastGraphicsType.POINT) {
+    if (entity.properties.getValue().type === GraphicsType.POINT) {
       options.fill && (entity.point.outlineColor = options.outlineColor || Cesium.Color.BLUE)
       entity.point.color = options.color || Cesium.Color.YELLOW
-    } else if (entity.properties.getValue().type === FastGraphicsType.RECTANGLE) {
+    } else if (entity.properties.getValue().type === GraphicsType.RECTANGLE) {
       entity.rectangle.material = options.fill ? options.color : Cesium.Color.YELLOW.withAlpha(0.2)
       entity.polyline.material = options.outlineColor || Cesium.Color.LAWNGREEN
-    } else if (entity.properties.getValue().type === FastGraphicsType.POLYGON) {
+    } else if (entity.properties.getValue().type === GraphicsType.POLYGON) {
       entity.polygon.material = options.fill ? options.color : Cesium.Color.YELLOW.withAlpha(0.2)
       entity.polyline.material = options.outlineColor || Cesium.Color.LAWNGREEN
     }
