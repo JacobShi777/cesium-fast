@@ -176,7 +176,7 @@ class FastDraw {
           },
           polyline: {
             positions: new Cesium.CallbackProperty(() => {
-              return rectangleUtils.getPolylinePositionsByRectangleDiagonalPointCartesian(this.#state.startCartesian, this.#state.currentCartesian)
+              return rectangleUtils.getPolylinePositionsByRectangleDiagonalPoint(this.#state.startCartesian, this.#state.currentCartesian, 'Cartesian')
             }, false),
             width: 2,
             material: options.outlineColor || Cesium.Color.LAWNGREEN,
@@ -204,7 +204,7 @@ class FastDraw {
 
     this.#handler.setInputAction(() => {
       this.#state.entity.rectangle.coordinates = Cesium.Rectangle.fromCartesianArray([this.#state.startCartesian, this.#state.currentCartesian])
-      this.#state.entity.polyline.positions = rectangleUtils.getPolylinePositionsByRectangleDiagonalPointCartesian(this.#state.startCartesian, this.#state.currentCartesian)
+      this.#state.entity.polyline.positions = rectangleUtils.getPolylinePositionsByRectangleDiagonalPoint(this.#state.startCartesian, this.#state.currentCartesian, 'Cartesian')
       // 这种方法在球体中，在视觉上不是中间
       // this.#state.entity.position = Cesium.Cartesian3.midpoint(this.#state.startCartesian, this.#state.currentCartesian, new Cesium.Cartesian3())
 
@@ -345,6 +345,7 @@ class FastDraw {
         return
       }
       this.#state.cartesianStack.push(this.#state.currentCartesian)
+      console.log(this.#state.cartesianStack)
       this.#state.entity.polygon.hierarchy = new Cesium.PolygonHierarchy(this.#state.cartesianStack)
       this.#state.entity.polyline.positions = [...this.#state.cartesianStack, this.#state.cartesianStack[0]]
       this.#state.entity.position = Cesium.BoundingSphere.fromPoints(this.#state.cartesianStack).center
@@ -423,6 +424,110 @@ class FastDraw {
     } else if (entity.properties.getValue().type === GraphicsType.POLYGON) {
       entity.polyline.material = options.outlineColor || Cesium.Color.LAWNGREEN
       entity.polygon.material = material
+    }
+  }
+
+  /**
+   * 获取实体的属性(创建时传入的options.properties)
+   * @param {Cesium.Entity} entity - 实体
+   * @returns 
+   */
+  getProperties(entity) {
+    if (!entity) return
+    return entity.properties.getValue().userProperties
+  }
+
+  addEntity(coordinates, graphicsType, options) {
+    if (graphicsType === GraphicsType.POINT) {
+      this.viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(coordinates[0], coordinates[1]),
+        point: {
+          pixelSize: 9,
+          color: options.color || Cesium.Color.YELLOW,
+          outlineColor: options.outlineColor || Cesium.Color.BLUE,
+          outlineWidth: 1,
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+        },
+        label: {
+          text: "",
+          font: "11pt sans-serif",
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          verticalOrigin: Cesium.VerticalOrigin.BASELINE,
+          fillColor: Cesium.Color.GHOSTWHITE,
+          showBackground: true,
+          backgroundColor: Cesium.Color.DARKSLATEGREY.withAlpha(0.8),
+          backgroundPadding: new Cesium.Cartesian2(4, 2),
+          pixelOffset: new Cesium.Cartesian2(0, -16),
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+        properties: {
+          type: GraphicsType.POINT,
+          layer: options.layer || 'default',
+          options,
+          userProperties: options.properties,
+        }
+      })
+    } else if (graphicsType === GraphicsType.RECTANGLE) {
+      this.viewer.entities.add({
+        rectangle: {
+          coordinates: Cesium.Rectangle.fromDegrees(coordinates[0][0], coordinates[1][1], coordinates[1][0], coordinates[0][1]),
+          fill: options.fill || false,
+          material: options.color || Cesium.Color.YELLOW.withAlpha(0.2),
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+        },
+        polyline: {
+          positions: rectangleUtils.getPolylinePositionsByRectangleDiagonalPoint(...coordinates),
+          width: 2,
+          material: options.outlineColor || Cesium.Color.LAWNGREEN,
+          arcType: Cesium.ArcType.RHUMB,
+        },
+        label: {
+          text: "",
+          font: "11pt sans-serif",
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          fillColor: Cesium.Color.GHOSTWHITE,
+          showBackground: true,
+          backgroundColor: Cesium.Color.DARKSLATEGREY.withAlpha(0.8),
+          backgroundPadding: new Cesium.Cartesian2(4, 2),
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+        properties: {
+          type: GraphicsType.RECTANGLE,
+          layer: options.layer || 'default',
+          options,
+          userProperties: options.properties,
+        }
+      })
+    } else if (graphicsType === GraphicsType.POLYGON) {
+      this.viewer.entities.add({
+        polygon: {
+          hierarchy: new Cesium.PolygonHierarchy(Cesium.Cartesian3.fromDegreesArray(coordinates.reduce((acc, cur) => acc.concat(cur), []))),
+          fill: options.fill || false,
+          material: options.color || Cesium.Color.YELLOW.withAlpha(0.2),
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+        },
+        polyline: {
+          positions: Cesium.Cartesian3.fromDegreesArray(coordinates.reduce((acc, cur) => acc.concat(cur), [])),
+          width: 2,
+          material: options.outlineColor || Cesium.Color.LAWNGREEN,
+        },
+        label: {
+          text: "",
+          font: "11pt sans-serif",
+          heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          fillColor: Cesium.Color.GHOSTWHITE,
+          showBackground: true,
+          backgroundColor: Cesium.Color.DARKSLATEGREY.withAlpha(0.8),
+          backgroundPadding: new Cesium.Cartesian2(4, 2),
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+        properties: {
+          type: GraphicsType.POLYGON,
+          layer: options.layer || 'default',
+          options,
+          userProperties: options.properties,
+        }
+      })
     }
   }
 }

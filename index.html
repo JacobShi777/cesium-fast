@@ -68,6 +68,9 @@
         <el-button type="primary" size="mini" @click="removeEntitiesByLayer">删除图层</el-button>
         <el-button type="primary" size="mini" @click="setEntityLabelText">设置名称</el-button>
         <el-button type="primary" size="mini" @click="setEntityColor">设置颜色</el-button>
+        <el-button type="primary" size="mini" @click="getProperties">获取properties</el-button>
+        <el-button type="primary" size="mini" @click="editable">可编辑</el-button>
+        <el-button type="primary" size="mini" @click="addEntity">添加图形</el-button>
         
 
 
@@ -80,7 +83,7 @@
         el: '#app',
         data: {
           fastCesium: undefined,
-          graphicsType: 'RECTANGLE',
+          graphicsType: 'POLYGON',
           entity: undefined,
           options: {
             layer: '',
@@ -96,28 +99,8 @@
         },
         methods: {
           drawEntity() {
-            this.fastCesium.draw.eventHandler.setAction((e) => {
-              this.entity = e.entity
-              console.log(e)
-            }, 'DRAW_ENTITY')
-
-            this.fastCesium.draw.eventHandler.setAction((e) => {
-              if (e.length === 0) {
-                this.selectedEntities.forEach(entity => {
-                  this.fastCesium.draw.setColor(entity)
-                })
-                this.selectedEntities = []
-              } else {
-                this.selectedEntities.push(e[0])
-                this.fastCesium.draw.setColor(e[0], { outlineColor: Cesium.Color.RED })
-                // e.forEach(entity => {
-                //   this.fastCesium.draw.setColor(entity, { outlineColor: Cesium.Color.RED })
-                // })
-              }
-            }, 'LEFT_CLICK_ENTITY')
-
             this.fastCesium.draw.drawEntity(
-              CesiumFast.GraphicsType[this.graphicsType], 
+              CesiumFast.GraphicsType[this.graphicsType],
               this.options,
           )
           },
@@ -138,12 +121,76 @@
                 color: Cesium.Color.BLUE.withAlpha(0.2),
               }
             )
-          }
+          },
+          getProperties() {
+            console.log(this.fastCesium.draw.getProperties(this.entity))
+          },
+          editable() {
+            this.fastCesium.draw.editable = !this.fastCesium.draw.editable
+          },
+          addEntity() {
+            // this.fastCesium.draw.addEntity(
+            //   [120, 30],
+            //   CesiumFast.GraphicsType.POINT,
+            //   {
+            //     layer: 'test',
+            //     properties: {
+            //       key1: '值1',
+            //       key2: '值2',
+            //     },
+            //   }
+            // )
+
+            // this.fastCesium.draw.addEntity(
+            //   [[120, 30], [130, 40]],
+            //   CesiumFast.GraphicsType.RECTANGLE,
+            //   {
+            //     layer: 'test',
+            //     properties: {
+            //       key1: '值1',
+            //       key2: '值2',
+            //     },
+            //   }
+            // )
+
+            this.fastCesium.draw.addEntity(
+              [[120, 30], [130, 40], [140, 30], [120, 30]],
+              CesiumFast.GraphicsType.POLYGON,
+              {
+                layer: 'test',
+                fill: true,
+                properties: {
+                  key1: '值1',
+                  key2: '值2',
+                },
+              }
+            )
+          },
         },
         mounted() {
-          // this.viewer = new Cesium.Viewer("cesiumContainer");
-          // this.viewer = new CesiumFast.Cesium.Viewer("cesiumContainer");
-          this.fastCesium = new CesiumFast("cesiumContainer");
+          // this.viewer = new Cesium.Viewer("cesiumContainer")
+          // this.viewer = new CesiumFast.Cesium.Viewer("cesiumContainer")
+          this.fastCesium = new CesiumFast("cesiumContainer")
+
+          this.fastCesium.draw.eventHandler.setAction((e) => {
+            this.entity = e.entity
+            console.log(e)
+          }, 'DRAW_ENTITY')
+
+          this.fastCesium.draw.eventHandler.setAction((e) => {
+            if (e.length === 0) {
+              this.selectedEntities.forEach(entity => {
+                this.fastCesium.draw.setColor(entity)
+              })
+              this.selectedEntities = []
+            } else {
+              this.selectedEntities.push(e[0])
+              this.fastCesium.draw.setColor(e[0], { outlineColor: Cesium.Color.RED })
+              // e.forEach(entity => {
+              //   this.fastCesium.draw.setColor(entity, { outlineColor: Cesium.Color.RED })
+              // })
+            }
+          }, 'LEFT_CLICK_ENTITY')
         }
       })
     </script>
