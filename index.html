@@ -65,8 +65,10 @@
         <span class="form-label">图层: </span>
         <el-input style="width: 100px;" size="mini" v-model="options.layer" ></el-input>
         <el-button type="primary" size="mini" @click="drawEntity">绘制</el-button>
-        <el-button type="primary" size="mini" @click="setEntityLabelText">设置名称</el-button>
         <el-button type="primary" size="mini" @click="removeEntitiesByLayer">删除图层</el-button>
+        <el-button type="primary" size="mini" @click="setEntityLabelText">设置名称</el-button>
+        <el-button type="primary" size="mini" @click="setEntityColor">设置颜色</el-button>
+        
 
 
     </div>
@@ -78,10 +80,13 @@
         el: '#app',
         data: {
           fastCesium: undefined,
-          graphicsType: 'RECTANGLE',
+          graphicsType: 'POINT',
           entity: undefined,
           options: {
             layer: '',
+            // outlineColor: Cesium.Color.RED,
+            // fill: true,
+            // color: Cesium.Color.BLUE.withAlpha(0.2),
             properties: {
               key1: '值1',
               key2: '值2',
@@ -90,14 +95,13 @@
         },
         methods: {
           drawEntity() {
+            this.fastCesium.draw.eventHandler.setAction((e) => {
+              this.entity = e.entity
+              console.log(e)
+            }, 'DRAW_ENTITY')
             this.fastCesium.draw.drawEntity(
               CesiumFast.FastGraphicsType[this.graphicsType], 
               this.options,
-              (e) => {
-                this.entity = e.entity
-                console.log(e)
-                console.log(this.entity.properties.getValue().layer)
-              }
           )
           },
           setEntityLabelText() {
@@ -107,6 +111,16 @@
           },
           removeEntitiesByLayer() {
             this.fastCesium.draw.removeEntitiesByLayer(this.options.layer)
+          },
+          setEntityColor() {
+            this.fastCesium.draw.setColor(
+              this.entity,
+              {
+                outlineColor: Cesium.Color.RED,
+                fill: true,
+                color: Cesium.Color.BLUE.withAlpha(0.2),
+              }
+            )
           }
         },
         mounted() {

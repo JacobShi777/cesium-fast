@@ -1,7 +1,8 @@
 import * as Cesium from 'cesium'
 
 import FastGraphicsType from '../constants/graphics';
-import FastColor from '../constants/color';
+import * as rectangleUtils from '../utils/rectangle'
+import EventHandler from './EventHandler'
 
 const toDegrees = Cesium.Math.toDegrees;
 
@@ -18,6 +19,8 @@ class FastDraw {
       store: {},
     }
   }
+
+  eventHandler = new EventHandler(['DRAW_ENTITY', 'LEFT_CLICK_ENTITY'])
   
   constructor(_this) {
     this.viewer = _this.viewer
@@ -26,20 +29,23 @@ class FastDraw {
   /**
    * 绘制图形
    * @param { FastGraphicsType } fastGraphicsType 图形类型
-   * @param { { layer: String, color: FastColor, properties: Object.<string, *> } } options 选项
+   * @param { { layer: string, outlineColor: Color, fill: boolean, color: Color, properties: Object.<string, *> } } options 选项
    * @param { function({ entity: Entity, coordinates: Array }): void } callback 回调函数
    */
-  drawEntity(fastGraphicsType, options, callback) {
+  drawEntity(fastGraphicsType, options) {
     if (!(fastGraphicsType instanceof FastGraphicsType)) {
       throw new Error('fastGraphicsType must be an instance of FastGraphicsType')
     }
-    if (typeof options === 'function') {
-      callback = options
-      options = undefined
+    if (options) {
+      if (!(options instanceof Object)) throw new Error('options must be an instance of Object')
+      if (options.layer && typeof options.layer !== 'string') throw new Error('options.layer must be an instance of String')
+      if (options.outlineColor && !(options.outlineColor instanceof Cesium.Color)) throw new Error('options.outlineColor must be an instance of Cesium.Color')
+      if (options.fill && typeof options.fill !== 'boolean') throw new Error('options.fill must be an instance of Boolean')
+      if (options.color && !(options.color instanceof Cesium.Color)) throw new Error('options.color must be an instance of Cesium.Color')
+      if (options.properties && !(options.properties instanceof Object)) throw new Error('options.properties must be an instance of Object')
     }
 
     this.#initState()
-    this.#state.callback = callback
     if (fastGraphicsType === FastGraphicsType.POINT) {
       this.#drawPoint(options)
 
@@ -70,10 +76,10 @@ class FastDraw {
       const entity = this.viewer.entities.add({
         position: cartesian,
         point: {
-          pixelSize: 10,
-          color: Cesium.Color.YELLOW,
-          outlineColor: Cesium.Color.WHITE,
-          outlineWidth: 2,
+          pixelSize: 9,
+          color: options.color || Cesium.Color.YELLOW,
+          outlineColor: options.outlineColor || Cesium.Color.BLUE,
+          outlineWidth: 1,
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
         },
         label: {
@@ -94,8 +100,9 @@ class FastDraw {
           userProperties: options.properties,
         }
       })
-      this.#state.callback({
+      this.eventHandler.trigger('DRAW_ENTITY', {
         entity,
+        type: FastGraphicsType.POINT,
         coordinates: [longitude, latitude]
       })
       this.#handler.destroy()
@@ -118,7 +125,7 @@ class FastDraw {
       }
       if (!this.#state.startCartesian) {
         this.#state.startCartesian = cartesian
-      } 
+      }
     }, Cesium.ScreenSpaceEventType.LEFT_DOWN)
 
     this.#handler.setInputAction((mouse) => {
@@ -135,15 +142,26 @@ class FastDraw {
       this.#state.currentCartesian = cartesian
 
       if (!this.#state.entity) {
+        let material = Cesium.Color.YELLOW.withAlpha(0.2)
+        if (options.fill && options.color) {
+          material = options.color
+        }
         this.#state.entity = this.viewer.entities.add({
           rectangle: {
             coordinates: new Cesium.CallbackProperty(() => {
               return Cesium.Rectangle.fromCartesianArray([this.#state.startCartesian, this.#state.currentCartesian])
             }, false),
-            fill: false,
-            outline: true,
-            outlineColor: Cesium.Color.YELLOW,
-            outlineWidth: 15,
+            fill: options.fill || false,
+            material,
+            heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          },
+          polyline: {
+            positions: new Cesium.CallbackProperty(() => {
+              return rectangleUtils.getPolylinePositionsByRectangleDiagonalPointCartesian(this.#state.startCartesian, this.#state.currentCartesian)
+            }, false),
+            width: 2,
+            material: options.outlineColor || Cesium.Color.LAWNGREEN,
+            arcType: Cesium.ArcType.RHUMB,
           },
           label: {
             text: "",
@@ -166,6 +184,7 @@ class FastDraw {
 
     this.#handler.setInputAction(() => {
       this.#state.entity.rectangle.coordinates = Cesium.Rectangle.fromCartesianArray([this.#state.startCartesian, this.#state.currentCartesian])
+      this.#state.entity.polyline.positions = rectangleUtils.getPolylinePositionsByRectangleDiagonalPointCartesian(this.#state.startCartesian, this.#state.currentCartesian)
       // 这种方法在球体中，在视觉上不是中间
       // this.#state.entity.position = Cesium.Cartesian3.midpoint(this.#state.startCartesian, this.#state.currentCartesian, new Cesium.Cartesian3())
 
@@ -192,8 +211,9 @@ class FastDraw {
         new Cesium.Cartesian3(),
       )
 
-      this.#state.callback({
+      this.eventHandler.trigger('DRAW_ENTITY', {
         entity: this.#state.entity,
+        type: FastGraphicsType.RECTANGLE,
         coordinates,
       })
       this.#handler.destroy()
@@ -238,8 +258,8 @@ class FastDraw {
               positions: new Cesium.CallbackProperty(() => {
                 return [...this.#state.cartesianStack, this.#state.currentCartesian]
               }, false),
-              width: 1,
-              material: Cesium.Color.YELLOW,
+              width: 2,
+              material: options.outlineColor || Cesium.Color.LAWNGREEN,
             }
           })
         }
@@ -247,16 +267,26 @@ class FastDraw {
 
       if (this.#state.cartesianStack.length === 2 && this.#state.entity.polyline) {
         this.viewer.entities.remove(this.#state.entity)
+        let material = Cesium.Color.YELLOW.withAlpha(0.2)
+        if (options.fill && options.color) {
+          material = options.color
+        }
 
         this.#state.entity = this.viewer.entities.add({
           polygon: {
             hierarchy: new Cesium.CallbackProperty(() => {
               return new Cesium.PolygonHierarchy([...this.#state.cartesianStack, this.#state.currentCartesian])
             }, false),
-            fill: false,
-            outline: true,
-            outlineColor: Cesium.Color.YELLOW,
-            outlineWidth: 2,
+            fill: options.fill || false,
+            material,
+            heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+          },
+          polyline: {
+            positions: new Cesium.CallbackProperty(() => {
+              return [...this.#state.cartesianStack, this.#state.currentCartesian, this.#state.cartesianStack[0]]
+            }, false),
+            width: 2,
+            material: options.outlineColor || Cesium.Color.LAWNGREEN,
           },
           label: {
             text: "",
@@ -295,6 +325,7 @@ class FastDraw {
       }
       this.#state.cartesianStack.push(this.#state.currentCartesian)
       this.#state.entity.polygon.hierarchy = new Cesium.PolygonHierarchy(this.#state.cartesianStack)
+      this.#state.entity.polyline.positions = [...this.#state.cartesianStack, this.#state.cartesianStack[0]]
       this.#state.entity.position = Cesium.BoundingSphere.fromPoints(this.#state.cartesianStack).center
 
       const coordinates = this.#state.cartesianStack.map(cartesian => {
@@ -302,8 +333,9 @@ class FastDraw {
         return [toDegrees(cartographic.longitude), toDegrees(cartographic.latitude)]
       })
 
-      this.#state.callback({
+      this.eventHandler.trigger('DRAW_ENTITY', {
         entity: this.#state.entity,
+        type: FastGraphicsType.POLYGON,
         coordinates
       })
       this.viewer.cesiumWidget.screenSpaceEventHandler.setInputAction(this.#state.store['LEFT_DOUBLE_CLICK'], Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK)
@@ -342,6 +374,28 @@ class FastDraw {
     entitiesToRemove.forEach(entity => {
       this.viewer.entities.remove(entity);
     });
+  }
+
+  /**
+   * 设置实体颜色
+   * @param {Cesium.Entity} entity 实体
+   * @param {{ outlineColor: Cesium.Color, fill: boolean, color: Cesium.Color }} options 选项
+   * @returns 
+   */
+  setColor(entity, options) {
+    if (!entity) {
+      return
+    }
+    if (entity.properties.getValue().type === FastGraphicsType.POINT) {
+      options.fill && (entity.point.outlineColor = options.outlineColor || Cesium.Color.BLUE)
+      entity.point.color = options.color || Cesium.Color.YELLOW
+    } else if (entity.properties.getValue().type === FastGraphicsType.RECTANGLE) {
+      entity.rectangle.material = options.fill ? options.color : Cesium.Color.YELLOW.withAlpha(0.2)
+      entity.polyline.material = options.outlineColor || Cesium.Color.LAWNGREEN
+    } else if (entity.properties.getValue().type === FastGraphicsType.POLYGON) {
+      entity.polygon.material = options.fill ? options.color : Cesium.Color.YELLOW.withAlpha(0.2)
+      entity.polyline.material = options.outlineColor || Cesium.Color.LAWNGREEN
+    }
   }
 }
 
