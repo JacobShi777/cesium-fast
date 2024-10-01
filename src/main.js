@@ -2,7 +2,7 @@ import * as Cesium from 'cesium'
 
 import GraphicsType from './constants/graphics';
 
-import FastDraw from './fast/draw.js';
+import Draw from './fast/Draw.js';
 
 class CesiumFast {
   static Cesium = Cesium;
@@ -13,7 +13,7 @@ class CesiumFast {
 
   constructor(container, options, viewAtChina = true) {
     this._init(container, options, viewAtChina)
-    this.draw = new FastDraw(this)
+    this.draw = new Draw(this)
   }
 
   _init(container, options, viewAtChina) {

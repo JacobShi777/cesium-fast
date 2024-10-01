@@ -7,7 +7,7 @@ import EntityBuilder from '../utils/EntityBuilder'
 
 const toDegrees = Cesium.Math.toDegrees;
 
-class FastDraw {
+class Draw {
   #state = {}
   #initState() {
     this.#state.handler && this.#state.handler.destroy()
@@ -26,9 +26,18 @@ class FastDraw {
   eventHandler = new EventHandler(['DRAW_ENTITY', 'LEFT_CLICK_ENTITY'])
   
   constructor(_this) {
+    let editable = false
+
     this.viewer = _this.viewer
     this.#initState()
     this.#setLeftClickEntityHandler()
+
+    Object.defineProperty(this, 'editable', {
+      get: () => editable,
+      set: (value) => {
+        editable = value
+      },
+    })
   }
 
   // TODO 可能需要处理不是Entity的情况
@@ -188,7 +197,6 @@ class FastDraw {
     this.#state.handler = new Cesium.ScreenSpaceEventHandler(this.viewer.scene.canvas)
 
     this.#state.handler.setInputAction((mouse) => {
-      console.log('left click')
       const ray = this.viewer.camera.getPickRay(mouse.position);
       const globe = this.viewer.scene.globe;
       const cartesian = globe.pick(ray, this.viewer.scene);
@@ -346,6 +354,12 @@ class FastDraw {
     return entity.properties.getValue().userProperties
   }
 
+  /**
+   * 根据坐标添加实体
+   * @param {*} coordinates - 坐标
+   * @param {CesiumFast.GraphicsType} graphicsType - 图形类型
+   * @param {*} options - 选项
+   */
   addEntity(coordinates, graphicsType, options) {
     if (graphicsType === GraphicsType.POINT) {
       const position = Cesium.Cartesian3.fromDegrees(coordinates[0], coordinates[1])
@@ -364,4 +378,4 @@ class FastDraw {
   }
 }
 
-export default FastDraw;
+export default Draw;
